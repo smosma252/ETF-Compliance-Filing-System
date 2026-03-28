@@ -4,31 +4,23 @@ from datetime import datetime, date
 
 class Funds(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    cik: str
+    cik: str | None = None
     series_id: str
-    class_id: str
-    ticker: str
+    series_lei: str | None = None
     fund_name: str
-    fund_type: str
-    status: str
-    created_at: datetime
-    updated_at: datetime
+    ticker: str | None = None  # optional
+    created_at: datetime = Field(default_factory=datetime)
+    updated_at: datetime = Field(default_factory=datetime)
 
 class Filings(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    fund_id: int | None
-    filing_type: str
-    reporting_period_end: datetime
-    filing_date: date
-    amendment_no:int 
-    status: str
-    source_format: str
-    source_reference: str
-    created_by: str
-    approved_by: str
-    approved_at: datetime
-    created_at: datetime 
-    updated_at: datetime
+    accession_number: str
+    fund_id: int = Field(foreign_key="funds.id")
+    total_assets: float | None = None
+    total_liabilities: float | None = None
+    net_assets: float | None = None
+    status: str = "draft"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 postgres_db_name = "etf_filing"
