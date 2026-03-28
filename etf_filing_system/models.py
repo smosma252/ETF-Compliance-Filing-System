@@ -22,13 +22,24 @@ class Filings(SQLModel, table=True):
     status: str = "draft"
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+class Holdings(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    filing_id: int = Field(foreign_key="filings.id")
+    issuer_name: str
+    cusip: str | None = None
+    lei: str | None = None
+    market_value: float
+    weight_pct: float | None = None
+    asset_category: str | None = None
+    issuer_type: str | None = None
+    country: str | None = None
+
 
 postgres_db_name = "etf_filing"
-postgres_url = "postgresql+psycopg2://postgres:osama@127.0.0.1:5432/etf_filing"
+postgres_url = "${POSTGRES_URL}"
 
 connection_args = {}
 engine = create_engine(postgres_url, echo=True)
-
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
