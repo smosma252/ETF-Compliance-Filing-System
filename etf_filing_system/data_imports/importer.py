@@ -7,6 +7,5 @@ class DataImporter(ABC):
         pass
 
     @abstractmethod
-    def normalize(self):
+    def normalize(self, df):
         pass
-
