@@ -1,8 +1,18 @@
 from logging.config import fileConfig
+from pathlib import Path
+import sys
+import os
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-from models import SQLModel, engine
+
+# Alembic executes env.py as a script, so relative imports like "..models"
+# are not reliable. Ensure the package root is on sys.path and import directly.
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+if str(PACKAGE_ROOT) not in sys.path:
+    sys.path.insert(0, str(PACKAGE_ROOT))
+
+from models import SQLModel
 
 from alembic import context
 
@@ -19,10 +29,13 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-config.set_main_option(
-    "sqlalchemy.url",
-    engine.url.render_as_string(hide_password=False),
-)
+def resolve_database_url() -> str:
+    database_url = os.getenv("POSTGRES_URL")
+    if database_url:
+        return database_url
+    raise RuntimeError("POSTGRES_URL is not set in environment or .env file.")
+
+config.set_main_option("sqlalchemy.url", resolve_database_url())
 target_metadata = SQLModel.metadata
 
 # other values from the config, defined by the needs of env.py,
