@@ -1,14 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi import UploadFile
 from contextlib import asynccontextmanager
-
-try:
-    from .data_imports.n_port_importer import NPortImporter
-except ImportError:
-    from data_imports.n_port_importer import NPortImporter
+from .schema import ETFFundFormData
+from .data_imports.import_factory import ImportFactory
 
 @asynccontextmanager
-async def on_startup(app: FastAPI):
+async def on_startup(app: FastAPI, debug=True):
     print("Startup Actions")
     yield
     print("Shutdown")
@@ -19,15 +16,24 @@ app = FastAPI(lifespan=on_startup)
 async def root():
     pass
 
-@app.post("/upload")
-async def upload_file(file: UploadFile):
+@app.post("/fundtype")
+async def create_fund_type(fund_data: ETFFundFormData):
     try:
-        importer = NPortImporter()
-        importer.parsefile(file)
+        pass
     except Exception:
-        print("File unable to import")
-    return
+        print("")
+    pass
 
+@app.post("/upload")
+async def upload_file(file: UploadFile, fund_type:str):
+    try:
+        importer = ImportFactory.get_importer(fund_type=fund_type)
+        await importer.parsefile(file)
+        importer.import_to_db()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Unable to parse/import file: {str(e)}")
+    return {"status": "ok"}
+ 
 @app.post('/approve')
 async def approve(fund_id:int):
     pass
