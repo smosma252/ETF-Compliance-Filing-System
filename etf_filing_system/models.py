@@ -1,6 +1,7 @@
 from sqlmodel import Field, SQLModel, create_engine
 from datetime import datetime, timezone
 import os
+from sqlalchemy import UniqueConstraint, Index
 
 _engine = None
 
@@ -28,6 +29,16 @@ class Filings(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utc_now)
 
 class Holdings(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint(
+            "filing_id",
+            "issuer_name",
+            "cusip",
+            name="uq_holdings_filing_issuer_cusip",
+        ),
+        Index("ix_holdings_filing_id", "filing_id"),
+    )
+
     id: int | None = Field(default=None, primary_key=True)
     filing_id: int = Field(foreign_key="filings.id")
     issuer_name: str
