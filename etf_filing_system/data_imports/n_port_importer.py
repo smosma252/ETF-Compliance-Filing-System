@@ -3,9 +3,13 @@ import pandas as pd
 import inspect
 from fastapi import UploadFile
 from sqlmodel import Session, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import ProgrammingError
 from ..models import get_engine, Holdings, Filings
 
 class NPortImporter(DataImporter):
+    CHUNK_SIZE = 50_000
+
     COLUMN_MAP = {
         "ACCESSION_NUMBER": "accession_number",
         "ISSUER_NAME": "issuer_name",
@@ -19,22 +23,29 @@ class NPortImporter(DataImporter):
     }
 
     HOLDINGS_COLUMNS = [
-        *COLUMN_MAP.values(),
-        "filing_id"
+        "accession_number",
+        "filing_id",
+        "issuer_name",
+        "cusip",
+        "lei",
+        "market_value",
+        "weight_pct",
+        "asset_category",
+        "issuer_type",
+        "country",
     ]
 
     def __init__(self):
         self.df = None
+        self.file = None
 
     async def parsefile(self, file: UploadFile):
+        # Large files are streamed in chunks during import_to_db.
+        self.file = file
         seek_result = file.seek(0)
         if inspect.isawaitable(seek_result):
             await seek_result
-
-        file_obj = file.file if hasattr(file, "file") else file
-        df = pd.read_csv(file_obj, delimiter="\t")
-        self.df = self.normalize(df)
-        return self.df
+        return None
 
     def normalize(self, df: pd.DataFrame):
         missing = [column for column in self.COLUMN_MAP if column not in df.columns]
@@ -57,62 +68,94 @@ class NPortImporter(DataImporter):
             .str.replace(",", "", regex=False),
             errors="coerce",
         )
-        standardized = standardized[self.HOLDINGS_COLUMNS]
+        standardized = standardized[self.HOLDINGS_COLUMNS].copy()
         return standardized
 
     def import_to_db(self):
-        if self.df is None:
-            raise ValueError("No N-PORT data loaded. Run parsefile first.")
+        if self.file is None:
+            raise ValueError("No file loaded. Run parsefile first.")
 
         with Session(get_engine()) as session:
-            for record in self.df.to_dict(orient="records"):
-                accession_number = self._clean_string(record.get("accession_number"))
-                if not accession_number:
+            filing_mapping = {
+                self._clean_string(filing.accession_number): filing.id
+                for filing in session.exec(select(Filings)).all()
+                if self._clean_string(filing.accession_number)
+            }
+
+            if not filing_mapping:
+                raise ValueError("No filings found. Import fund_info before N-PORT holdings.")
+
+            if hasattr(self.file, "file"):
+                self.file.file.seek(0)
+                file_obj = self.file.file
+            else:
+                file_obj = self.file
+
+            for chunk in pd.read_csv(file_obj, delimiter="\t", chunksize=self.CHUNK_SIZE):
+                df = self.normalize(chunk)
+
+                
+                df["filing_id"] = df["accession_number"].map(filing_mapping)
+                df["accession_number"] = df["accession_number"].apply(self._clean_string)
+                
+                df = df[df["filing_id"].notna()].copy()
+                df["filing_id"] = df["filing_id"].astype(int)
+                df["issuer_name"] = df["issuer_name"].apply(self._clean_string)
+                df["cusip"] = df["cusip"].apply(self._clean_string)
+                df["lei"] = df["lei"].apply(self._clean_string)
+                df["asset_category"] = df["asset_category"].apply(self._clean_string)
+                df["issuer_type"] = df["issuer_type"].apply(self._clean_string)
+                df["country"] = df["country"].apply(self._clean_string)
+                df["weight_pct"] = df["weight_pct"].apply(self._clean_float)
+
+                df = df[df["issuer_name"].notna() & df["market_value"].notna()].copy()
+
+                df = df.drop_duplicates(
+                    subset=["filing_id", "issuer_name", "cusip"],
+                    keep="last",
+                )
+                if df.empty:
                     continue
 
-                filing = session.exec(
-                    select(Filings).where(Filings.accession_number == accession_number)
-                ).first()
+                payload = df[
+                    [
+                        "filing_id",
+                        "issuer_name",
+                        "cusip",
+                        "lei",
+                        "market_value",
+                        "weight_pct",
+                        "asset_category",
+                        "issuer_type",
+                        "country",
+                    ]
+                ].to_dict(orient="records")
 
-                if filing is None:
-                    continue
+                stmt = pg_insert(Holdings).values(payload)
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=["filing_id", "issuer_name", "cusip"],
+                    set_={
+                        "lei": stmt.excluded.lei,
+                        "market_value": stmt.excluded.market_value,
+                        "weight_pct": stmt.excluded.weight_pct,
+                        "asset_category": stmt.excluded.asset_category,
+                        "issuer_type": stmt.excluded.issuer_type,
+                        "country": stmt.excluded.country,
+                    },
+                )
 
-                issuer_name = self._clean_string(record.get("issuer_name"))
-                market_value = record.get("market_value")
-                if not issuer_name or pd.isna(market_value):
-                    continue
-                weight_pct = self._clean_float(record.get("weight_pct"))
+                try:
+                    session.execute(stmt)
+                except ProgrammingError as exc:
+                    message = str(exc).lower()
+                    if "no unique or exclusion constraint" in message:
+                        raise ValueError(
+                            "Missing unique constraint on holdings(filing_id, issuer_name, cusip). "
+                            "Run migrations before importing."
+                        ) from exc
+                    raise
 
-                holdings = session.exec(
-                    select(Holdings).where(
-                        Holdings.filing_id == filing.id,
-                        Holdings.issuer_name == issuer_name,
-                        Holdings.cusip == self._clean_string(record.get("cusip")),
-                    )
-                ).first()
-
-                if holdings is None:
-                    holdings = Holdings(
-                        filing_id=filing.id,
-                        issuer_name=issuer_name,
-                        cusip=self._clean_string(record.get("cusip")),
-                        lei=self._clean_string(record.get("lei")),
-                        market_value=float(market_value),
-                        weight_pct=weight_pct,
-                        asset_category=self._clean_string(record.get("asset_category")),
-                        issuer_type=self._clean_string(record.get("issuer_type")),
-                        country=self._clean_string(record.get("country")),
-                    )
-                else:
-                    holdings.lei = self._clean_string(record.get("lei"))
-                    holdings.market_value = float(market_value)
-                    holdings.weight_pct = weight_pct
-                    holdings.asset_category = self._clean_string(record.get("asset_category"))
-                    holdings.issuer_type = self._clean_string(record.get("issuer_type"))
-                    holdings.country = self._clean_string(record.get("country"))
-
-                session.add(holdings)
-            session.commit()
+                session.commit()
 
     @staticmethod
     def _clean_string(value):
