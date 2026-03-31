@@ -94,10 +94,8 @@ class NPortImporter(DataImporter):
             for chunk in pd.read_csv(file_obj, delimiter="\t", chunksize=self.CHUNK_SIZE):
                 df = self.normalize(chunk)
 
-                
                 df["filing_id"] = df["accession_number"].map(filing_mapping)
                 df["accession_number"] = df["accession_number"].apply(self._clean_string)
-                
                 df = df[df["filing_id"].notna()].copy()
                 df["filing_id"] = df["filing_id"].astype(int)
                 df["issuer_name"] = df["issuer_name"].apply(self._clean_string)
@@ -107,7 +105,6 @@ class NPortImporter(DataImporter):
                 df["issuer_type"] = df["issuer_type"].apply(self._clean_string)
                 df["country"] = df["country"].apply(self._clean_string)
                 df["weight_pct"] = df["weight_pct"].apply(self._clean_float)
-
                 df = df[df["issuer_name"].notna() & df["market_value"].notna()].copy()
 
                 df = df.drop_duplicates(
