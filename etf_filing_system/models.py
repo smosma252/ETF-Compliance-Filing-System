@@ -51,6 +51,17 @@ class Holdings(SQLModel, table=True):
     country: str | None = None
 
 
+class ExceptionImports(SQLModel, table=True):
+    id : int | None = Field(default=None, primary_key=True)
+    filing_id: int | None
+    source_file: str | None
+    rule_code: str = Field(index=True) # MISSING ACCESSION NUMBER, MISSING FUND NAME, etc. 
+    message : str | None
+    raw_payload: str | None = None
+    status: str = Field(index=True, default="OPEN") # CLOSED, DISMISSED
+    resolved_by: str | None
+    resolved_at: datetime | None
+
 postgres_db_name = "etf_filing"
 
 def create_db_and_tables():
