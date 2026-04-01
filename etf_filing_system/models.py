@@ -26,12 +26,12 @@ class Filings(SQLModel, table=True):
             "fund_id",
             name="uq_filings_accession_fundid"
         ),
-        Index("accession_number")
+        Index("accession_number"),
     )
     accession_number: str
     fund_id: int = Field(foreign_key="funds.id")
     total_assets: float | None = None
-    total_liabilities: float | None = None
+    total_liabilities: float | None = None 
     net_assets: float | None = None
     status: str = "draft"
     created_at: datetime = Field(default_factory=utc_now)

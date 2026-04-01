@@ -142,7 +142,7 @@ class NPortImporter(DataImporter):
                 )
 
                 try:
-                    session.execute(stmt)
+                    session.exec(stmt)
                 except ProgrammingError as exc:
                     message = str(exc).lower()
                     if "no unique or exclusion constraint" in message:
