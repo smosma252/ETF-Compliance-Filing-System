@@ -20,6 +20,14 @@ class Funds(SQLModel, table=True):
 
 class Filings(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    __table_args__ = (
+        UniqueConstraint(
+            "accession_number", 
+            "fund_id",
+            name="uq_filings_accession_fundid"
+        ),
+        Index("accession_number")
+    )
     accession_number: str
     fund_id: int = Field(foreign_key="funds.id")
     total_assets: float | None = None
