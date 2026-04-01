@@ -33,7 +33,37 @@ def resolve_database_url() -> str:
     database_url = os.getenv("POSTGRES_URL")
     if database_url:
         return database_url
-    raise RuntimeError("POSTGRES_URL is not set in environment or .env file.")
+
+#TODO: temporary, will have shared config helper
+    # Fallback to alembic.ini value when it is explicitly set.
+    ini_url = config.get_main_option("sqlalchemy.url")
+    if ini_url and ini_url != "driver://user:pass@localhost/dbname":
+        return ini_url
+
+    # Fallback to .env files for local development.
+    env_candidates = [
+        Path.cwd() / ".env",
+        Path(__file__).resolve().parents[2] / ".env",
+        Path(__file__).resolve().parents[1] / ".env",
+    ]
+
+    for env_file in env_candidates:
+        if not env_file.exists():
+            continue
+        for raw_line in env_file.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            if key.strip() == "POSTGRES_URL":
+                database_url = value.strip().strip('"').strip("'")
+                if database_url:
+                    os.environ["POSTGRES_URL"] = database_url
+                    return database_url
+
+    raise RuntimeError(
+        "POSTGRES_URL is not set in environment, alembic.ini, or .env file."
+    )
 
 config.set_main_option("sqlalchemy.url", resolve_database_url())
 target_metadata = SQLModel.metadata
