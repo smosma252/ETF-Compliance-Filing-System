@@ -167,7 +167,7 @@ Migrations are in:
 ### 1) Start Postgres
 
 ```bash
-docker compose -f .docker/docker-compose.yml up -d
+docker compose -f .docker/docker-compose.yml up -dy
 ```
 
 ### 2) Configure environment
