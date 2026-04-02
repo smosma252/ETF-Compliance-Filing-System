@@ -70,7 +70,25 @@ class ExceptionImports(SQLModel, table=True):
     resolved_by: str | None
     resolved_at: datetime | None
 
-postgres_db_name = "etf_filing"
+
+class ImportJob(SQLModel, table=True):
+    id: int | None = Field(default=True, primary_key=True)
+    job_type: str | None
+    status: str = Field(default="QUEUED", index=True) # QUEUED, RUNNING, COMPLETED, FAILED
+    source_filename : str | None
+    stored_file: str # url
+
+    total_rows: int = 0
+    processed_rows: int = 0
+    exception_rows: int = 0
+
+    error_message: str | None = None
+
+    created_at: datetime = Field(default=datetime.now())
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(get_engine())
