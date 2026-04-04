@@ -29,8 +29,8 @@ class Filings(SQLModel, table=True):
         ),
         Index("accession_number"),
     )
-    accession_number: str
-    fund_id: int = Field(foreign_key="funds.id")
+    accession_number: str = Field(index=True)
+    fund_id: int = Field(foreign_key="funds.id", index=True)
     total_assets: float | None = None
     total_liabilities: float | None = None 
     net_assets: float | None = None
@@ -73,7 +73,7 @@ class ExceptionImports(SQLModel, table=True):
 
 
 class ImportJob(SQLModel, table=True):
-    id: int | None = Field(default=True, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     job_type: str | None
     status: str = Field(default="QUEUED", index=True) # QUEUED, RUNNING, COMPLETED, FAILED
     source_filename : str | None
@@ -107,5 +107,7 @@ def get_session():
         yield session
 
 def save_file_to_store(file: UploadFile):
-    storage_path = os.getenv("FILE_STORE_FILEPATH")
-    os.path.join(storage_path, file.filename, datetime.now().strftime("%d%m%Y"))
+    #storage_path = os.getenv("FILE_STORE_FILEPATH")
+    storage_path = "C:\\Users\\osama\\Documents\\etf_compliance_system\\ETF-Compliance-Filing-System\\media"
+    path = os.path.join(storage_path, file.filename, datetime.now().strftime("%d%m%Y"))
+    return path
