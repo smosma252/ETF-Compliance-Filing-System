@@ -1,7 +1,8 @@
-from sqlmodel import Field, SQLModel, create_engine
+from sqlmodel import Field, SQLModel, create_engine, Session
 from datetime import datetime, timezone
 import os
 from sqlalchemy import UniqueConstraint, Index
+from fastapi import UploadFile
 
 _engine = None
 
@@ -89,7 +90,6 @@ class ImportJob(SQLModel, table=True):
     finished_at: datetime | None = None
 
 
-
 def create_db_and_tables():
     SQLModel.metadata.create_all(get_engine())
 
@@ -101,3 +101,11 @@ def get_engine():
             raise ValueError("POSTGRES_URL is not set.")
         _engine = create_engine(postgres_url, echo=True)
     return _engine
+
+def get_session():
+    with Session(get_engine()) as session:
+        yield session
+
+def save_file_to_store(file: UploadFile):
+    storage_path = os.getenv("FILE_STORE_FILEPATH")
+    os.path.join(storage_path, file.filename, datetime.now().strftime("%d%m%Y"))
