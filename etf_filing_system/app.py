@@ -6,7 +6,7 @@ from .models import ImportJob, save_file_to_store, get_session
 from .schema import ETFFundFormData
 from .data_imports.import_factory import ImportFactory
 from .status import ImportJobStatus
-from .task import process_nport_files
+from .tasks import process_nport_files
 
 
 @asynccontextmanager
@@ -42,12 +42,15 @@ async def create_import(file: UploadFile, session: Session=Depends(get_session))
         session.commit()
         session.refresh(job)
 
-        process_nport_files.delay(job.id)
+        task = process_nport_files.delay(job.id)
 
     except Exception as er:
-        return HTTPException(status_code=400, detail="Import Job failed to import N-Port File.")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Import job enqueue failed: {str(er)}",
+        ) from er
 
-    return {"job_id": job.id, "status": job.status}
+    return {"job_id": job.id, "status": job.status, "task_id": task.id}
 
 
 @app.post("/upload")

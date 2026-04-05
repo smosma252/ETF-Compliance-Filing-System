@@ -1,6 +1,8 @@
 from sqlmodel import Field, SQLModel, create_engine, Session
 from datetime import datetime, timezone
 import os
+import shutil
+from pathlib import Path
 from sqlalchemy import UniqueConstraint, Index
 from fastapi import UploadFile
 
@@ -107,7 +109,25 @@ def get_session():
         yield session
 
 def save_file_to_store(file: UploadFile):
-    #storage_path = os.getenv("FILE_STORE_FILEPATH")
-    storage_path = "C:\\Users\\osama\\Documents\\etf_compliance_system\\ETF-Compliance-Filing-System\\media"
-    path = os.path.join(storage_path, file.filename, datetime.now().strftime("%d%m%Y"))
-    return path
+    filename = Path(file.filename or "").name
+    if not filename:
+        raise ValueError("Uploaded file is missing a valid filename.")
+
+    storage_root = os.getenv("FILE_STORE_FILEPATH")
+    if not storage_root:
+        storage_root = str(Path(__file__).resolve().parent.parent / "media")
+
+    day_folder = datetime.now(timezone.utc).strftime("%Y%m%d")
+    target_dir = Path(storage_root) / day_folder
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    stem = Path(filename).stem
+    suffix = Path(filename).suffix
+    unique_name = f"{stem}_{datetime.now(timezone.utc).strftime('%H%M%S%f')}{suffix}"
+    target_path = target_dir / unique_name
+
+    file.file.seek(0)
+    with target_path.open("wb") as out_file:
+        shutil.copyfileobj(file.file, out_file)
+
+    return str(target_path.resolve())

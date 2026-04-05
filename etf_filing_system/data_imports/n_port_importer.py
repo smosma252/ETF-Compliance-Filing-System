@@ -39,9 +39,11 @@ class NPortImporter(DataImporter):
         self.df = None
         self.file = None
 
-    async def parsefile(self, file: UploadFile):
+    async def parsefile(self, file: UploadFile | str):
         # Large files are streamed in chunks during import_to_db.
         self.file = file
+        if type(file) == str:
+            return
         seek_result = file.seek(0)
         if inspect.isawaitable(seek_result):
             await seek_result
