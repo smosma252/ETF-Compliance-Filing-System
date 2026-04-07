@@ -1,22 +1,32 @@
-import { Shield } from "lucide-react";
-import { useState } from "react";
+import React, { useState } from "react";
 import { cn } from '../lib/utils';
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import {toast} from "sonner"
+import { Badge } from '../components/Badge';
+import {
+  LayoutDashboard,
+  Building2,
+  BarChart3,
+  AlertTriangle,
+  Upload,
+  History,
+  Shield
+} from 'lucide-react';
 
 
 interface NavItems {
     label: string
     href: string
-    icon: string
+    icon: React.ElementType
+    badge?: number
 }
 const NavItems: NavItems[] = [
-    {label: "Dashboard", href: "/", icon: ""},
-    {label: "Funds", href: "/Funds", icon: ""},
-    {label: "Holdings", href: "/Holdings", icon: ""},
-    {label: "Exceptions", href: "/Exceptions", icon: ""},
-    {label: "Upload", href: "/Upload", icon: ""},
-    {label: "Audit", href: "/Audit", icon: ""},
+    {label: "Dashboard", href: "/", icon: LayoutDashboard},
+    {label: "Funds", href: "/Funds", icon: Building2},
+    {label: "Holdings", href: "/Holdings", icon: BarChart3},
+    {label: "Exceptions", href: "/Exceptions", icon: AlertTriangle},
+    {label: "Upload", href: "/Upload", icon: Upload},
+    {label: "Audit", href: "/Audit", icon: History},
 ]
 
 interface DashboardLayoutProps {
@@ -29,6 +39,7 @@ interface DashboardLayoutProps {
 
 function DashboardLayout({children, title, subtitle, actions}: DashboardLayoutProps) {
     const [collapsed, setCollapsed] = useState(false)
+    const [location] = useLocation()
 
     return (
         <>
@@ -65,8 +76,8 @@ function DashboardLayout({children, title, subtitle, actions}: DashboardLayoutPr
                     <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
                         { 
                             NavItems.map( (item) => {
-                                const icon = item
-                                const isActive = true;
+                                const Icon = item.icon;
+                                const isActive = location === item.href;
                                 return (
                                     <Link key={item.href} href={item.href}>
                                         <div
@@ -80,9 +91,15 @@ function DashboardLayout({children, title, subtitle, actions}: DashboardLayoutPr
                                             {isActive && (
                                                 <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-full" />
                                             )}
+                                            <Icon className="w-4 h-4 shrink-0" />
                                             <span className="text-sm font-medium flex-1 truncate" style={{ fontFamily: 'var(--font-display)' }}>
                                                 {item.label}
                                             </span>
+                                            {item.badge && (
+                                                <Badge variant="destructive" className="h-4.5 min-w-4.5 px-1 text-[10px] leading-none">
+                                                {item.badge}
+                                                </Badge>
+                                            )}
                                         </div>
                                     </Link>
                                 )

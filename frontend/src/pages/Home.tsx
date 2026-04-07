@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { Activity } from "lucide-react";
+import {Button} from '../components/Button'
 import DashboardLayout from "../components/DashboardLayout"
 
 
@@ -22,14 +23,14 @@ function Home(){
                 className="relative h-40 overflow-hidden"
                 style={{ backgroundImage: `url()`, backgroundSize: 'cover', backgroundPosition: 'center 40%' }}
             >
-                <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-background/20" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-background/60 to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-r from-background via-background/80 to-background/20" />
+                    <div className="absolute inset-0 bg-linear-to-t from-background/60 to-transparent" />
                     <div className="relative h-full flex items-center px-8">
                     <div>
-                        <h2 className="text-2xl font-bold text-black mb-1" style={{ fontFamily: 'var(--font-display)' }}>
+                        <h2 className="text-2xl font-bold text-white mb-1" style={{ fontFamily: 'var(--font-display)' }}>
                         Filing Cycle
                         </h2>
-                        <p className="text-sm text-black/70">
+                        <p className="text-sm text-white/70">
                         Last ingestion: 0 · 0 active job
                         </p>
                     </div>
@@ -48,9 +49,9 @@ function Home(){
                         </div>
                         )}
                         <Link href="/upload">
-                            <button className="bg-black hover:bg-primary/90 text-white text-xs">
+                            <Button className="bg-primary hover:bg-primary/90 text-white text-xs">
                                 New Import
-                            </button>
+                            </Button>
                         </Link>
                     </div>
                 </div>

@@ -1,4 +1,4 @@
-import DashboardLayout from "../components/Dashboard"
+import DashboardLayout from "../components/DashboardLayout"
 
 function HoldingsPage(){
     return (
