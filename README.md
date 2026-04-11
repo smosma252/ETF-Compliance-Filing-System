@@ -1,4 +1,5 @@
 # ETF Compliance Filing System
+> A system that ingests ETF holdings data from multiple sources, validates it, tracks changes with audit logs, and generates a filing-ready output simulating SEC N-PORT workflows.
 
 End-to-end ETF filing ingestion and validation platform focused on:
 
